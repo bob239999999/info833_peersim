@@ -47,14 +47,54 @@ public class Node {
         System.out.println("Delivered to node " + destinationId + ": " + message);
     }
 
-    // Method to store data in the node's storage
+ // Method to store data in the node's storage
     public void put(int key, String value) {
-        // Here, we simplify by directly storing the value without replication
-        this.storage.put(key, value);
+        // Check if the key exists in the storage
+        if (storage.containsKey(key)) {
+            // Key already exists, replace the existing value
+            storage.put(key, value);
+        } else {
+            // Key does not exist, search for the nearest key
+            int nearestKey = findNearestKey(key);
+            if (nearestKey != -1) {
+                // Nearest key found, store the value with the nearest key
+                storage.put(nearestKey, value);
+            } else {
+                // No key found in the storage, directly store the value with the specified key
+                storage.put(key, value);
+            }
+        }
     }
 
-    // Method to retrieve data from the node's storage
+
+ // Method to retrieve data from the node's storage
     public String get(int key) {
-        return this.storage.get(key);
+        // Check if the key exists in the storage
+        if (storage.containsKey(key)) {
+            return storage.get(key); // If found, return the corresponding value
+        } else {
+            // If the key is not found, search for the nearest key
+            int nearestKey = findNearestKey(key);
+            if (nearestKey != -1) {
+                return storage.get(nearestKey); // Return the value corresponding to the nearest key
+            } else {
+                return null; // If no key is found, return null
+            }
+        }
     }
+
+    // Method to find the nearest key in the storage
+    private int findNearestKey(int key) {
+        int minDiff = Integer.MAX_VALUE;
+        int nearestKey = -1;
+        for (int storedKey : storage.keySet()) {
+            int diff = Math.abs(storedKey - key);
+            if (diff < minDiff) {
+                minDiff = diff;
+                nearestKey = storedKey;
+            }
+        }
+        return nearestKey;
+    }
+
 }
