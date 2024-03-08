@@ -1,0 +1,25 @@
+
+o
+java:S2293"YReplace the type specification in this constructor call with the diamond operator ("<>").(½¦£Ç
+
+java:S1598"xThis file "MatrixTransport.java" should be located in "helloWorldRing" directory, not in "/Users/mac/Desktop/Simulator".(‡â¦Œ
+o	java:S120"ZRename this package name to match the regular expression '^[a-z_]+(\.[a-z_][a-z0-9_]*)*$'.(‡â¦Œ
+i
+java:S2095"LUse try-with-resources or close this "BufferedReader" in a "finally" clause.(Ôü–Î8÷İ„¾á1
+A
+java:S1197",Move the array designators [][] to the type.(øŞÆ
+8
+java:S3010""#Remove this assignment of "matrix".(åù³
+>
+java:S3010&"#Remove this assignment of "matrix".(Øªáïıÿÿÿÿ
+E	java:S106"+Replace this use of System.out by a logger.(‹½¼Òıÿÿÿÿ
+@	java:S106!"+Replace this use of System.out by a logger.(š² £
+>	java:S108)")Either remove or fill this block of code.(ï­£Ä
+i
+java:S2975-"SRemove this "clone" implementation; use a copy constructor or copy factory instead.(²ÈŞ
+^
+java:S1182-"HUse super.clone() to create and seed the cloned instance to be returned.(²ÈŞ
+K
+java:S2696@"6Make the enclosing method "static" or remove this set.(«íÅ
+\
+java:S1128":Remove this unused import 'java.io.FileNotFoundException'.(·î™ùÿÿÿÿ8ÙŞ„¾á1
