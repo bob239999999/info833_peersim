@@ -1,6 +1,0 @@
-
-n	java:S120"ZRename this package name to match the regular expression '^[a-z_]+(\.[a-z_][a-z0-9_]*)*$'.(è±¶>
-@
-java:S1659"%Declare "current" on a separate line.(ŒÙ¯§úÿÿÿÿ
-@	java:S106!"+Replace this use of System.err by a logger.(­ğˆ
-E	java:S1062"+Replace this use of System.out by a logger.(şà‰ªøÿÿÿÿ
