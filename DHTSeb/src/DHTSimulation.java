@@ -1,7 +1,8 @@
+
 public class DHTSimulation {
 
     public static void main(String[] args) {
-        // Création et ajout de nœuds dans l'anneau
+        // Create and add nodes to the ring
         Node node1 = new Node(1);
         Node node2 = new Node(2);
         node1.join(node2);
@@ -9,35 +10,31 @@ public class DHTSimulation {
         Node node3 = new Node(3);
         node1.join(node3);
 
-        // Affichage des voisins pour vérifier l'insertion
-        System.out.println("Après insertion :");
-        System.out.println("Node 1 Voisins: gauche = " + node1.left.id + ", droite = " + node1.right.id);
-        System.out.println("Node 2 Voisins: gauche = " + node2.left.id + ", droite = " + node2.right.id);
-        System.out.println("Node 3 Voisins: gauche = " + node3.left.id + ", droite = " + node3.right.id);
+        // Display neighbors to verify insertion
+        System.out.println("After insertion :");
+        System.out.println("Node 1 Neighbors: left = " + node1.left.id + ", right = " + node1.right.id);
+        System.out.println("Node 2 Neighbors: left = " + node2.left.id + ", right = " + node2.right.id);
+        System.out.println("Node 3 Neighbors: left = " + node3.left.id + ", right = " + node3.right.id);
 
-        // Test de l'envoi de messages
-        System.out.println("\nTest de routage de messages :");
+        // Test message routing
+        System.out.println("\nTest message routing :");
         node1.sendMessage(3, "Hello, Node 3!");
         
-        // Test du stockage et de la récupération de données
-        System.out.println("\nTest de stockage :");
+        // Test data storage and retrieval
+        System.out.println("\nTest data storage :");
         node1.put(101, "Data A");
         node2.put(202, "Data B");
         node3.put(303, "Data C");
 
-        System.out.println("Donnée à la clé 101 (Node 1): " + node1.get(101));
-        System.out.println("Donnée à la clé 202 (Node 2): " + node2.get(202));
-        System.out.println("Donnée à la clé 303 (Node 3): " + node3.get(303));
+        System.out.println("Data at key 101 (Node 1): " + node1.get(101));
+        System.out.println("Data at key 202 (Node 2): " + node2.get(202));
+        System.out.println("Data at key 303 (Node 3): " + node3.get(303));
 
-        // Retrait d'un nœud et vérification des voisins
+        // Remove a node and verify neighbors
         node2.leave();
-        System.out.println("\nAprès le départ du Node 2 :");
-        System.out.println("Node 1 Voisins: gauche = " + node1.left.id + ", droite = " + node1.right.id);
-        System.out.println("Node 3 Voisins: gauche = " + node3.left.id + ", droite = " + node3.right.id);
-    	
-    
-    
+        System.out.println("\nAfter the departure of Node 2 :");
+        System.out.println("Node 1 Neighbors: left = " + node1.left.id + ", right = " + node1.right.id);
+        System.out.println("Node 3 Neighbors: left = " + node3.left.id + ", right = " + node3.right.id);
     }
-    
-   
 }
+  

@@ -2,22 +2,24 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Node {
-    int id; // Identifiant unique du nœud
-    Node left; // Voisin de gauche
-    Node right; // Voisin de droite
+    int id; // Unique identifier of the node
+    Node left; // Left neighbor
+    Node right; // Right neighbor
+    
+    Map<Integer, String> storage = new HashMap<>();
 
     public Node(int id) {
         this.id = id;
-        this.left = this; // Au début, le nœud pointe sur lui-même
+        this.left = this; // Initially, the node points to itself
         this.right = this;
     }
 
-    // Méthode pour insérer un nouveau nœud dans l'anneau
+    // Method to insert a new node into the ring
     public void join(Node newNode) {
         Node current = this;
         while (!(newNode.id > current.id && newNode.id < current.right.id)) {
             current = current.right;
-            if (current == this) break; // Si on fait un tour complet sans trouver, on s'arrête
+            if (current == this) break; // If we make a complete loop without finding, we stop
         }
         newNode.right = current.right;
         newNode.left = current;
@@ -25,12 +27,13 @@ public class Node {
         current.right = newNode;
     }
 
-    // Méthode pour retirer un nœud de l'anneau
+    // Method to remove a node from the ring
     public void leave() {
         this.left.right = this.right;
         this.right.left = this.left;
     }
-    //Méthode pour envoyer un message 
+    
+    // Method to send a message to a destination node
     public void sendMessage(int destinationId, String message) {
         Node target = this;
         while (target.id != destinationId) {
@@ -43,15 +46,14 @@ public class Node {
         }
         System.out.println("Delivered to node " + destinationId + ": " + message);
     }
-    
-    
-    Map<Integer, String> storage = new HashMap<>();
 
+    // Method to store data in the node's storage
     public void put(int key, String value) {
-        // Ici, nous simplifions en stockant directement la valeur sans réplication
+        // Here, we simplify by directly storing the value without replication
         this.storage.put(key, value);
     }
 
+    // Method to retrieve data from the node's storage
     public String get(int key) {
         return this.storage.get(key);
     }
