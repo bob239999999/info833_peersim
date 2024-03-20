@@ -6,12 +6,13 @@ public class Node {
     Node left; // Left neighbor
     Node right; // Right neighbor
     
-    Map<Integer, String> storage = new HashMap<>();
+    public static Map<Integer, String> storage = new HashMap<>();
 
     public Node(int id) {
         this.id = id;
         this.left = this; // Initially, the node points to itself
         this.right = this;
+        storage.put(id,"");
     }
 
     // Method to insert a new node into the ring
@@ -48,7 +49,7 @@ public class Node {
     }
 
  // Method to store data in the node's storage
-    public void put(int key, String value) {
+    public static void put(int key, String value) {
         // Check if the key exists in the storage
         if (storage.containsKey(key)) {
             // Key already exists, replace the existing value
@@ -84,7 +85,7 @@ public class Node {
     }
 
     // Method to find the nearest key in the storage
-    private int findNearestKey(int key) {
+    private static int findNearestKey(int key) {
         int minDiff = Integer.MAX_VALUE;
         int nearestKey = -1;
         for (int storedKey : storage.keySet()) {
