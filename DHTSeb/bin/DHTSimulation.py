@@ -15,6 +15,7 @@ class Node:
             self.left_neighbor = self
             self.right_neighbor = self
             network.add_node(self)
+            print("At the start, there is only one node. It is its own left and right neighbor.")
             print(f"Node {self.node_id} joined the ring at time {self.env.now}")
             self.print_neighbors()
             self.print_ring(network)
@@ -40,20 +41,20 @@ class Node:
 
     def leave_ring(self, network):
         print(f"Node {self.node_id} leaving the ring at time {self.env.now}")
-        self.print_neighbors()
-        self.print_ring(network)
-
+        
         if self.left_neighbor == self and self.right_neighbor == self:
             network.remove_node(self)
+            print("The network is now empty.")
             return
 
+        # Contact the left and right neighbors to update them
         self.left_neighbor.right_neighbor = self.right_neighbor
         self.right_neighbor.left_neighbor = self.left_neighbor
 
-        if network.nodes[0] == self:
-            network.nodes[-1].right_neighbor = self.right_neighbor
-
         network.remove_node(self)
+        print("Neighbors have been contacted to update them.")
+        self.left_neighbor.print_neighbors()
+        self.right_neighbor.print_neighbors()
 
     def print_neighbors(self):
         print(f"Node {self.node_id}: Left Neighbor = {self.left_neighbor.node_id}, Right Neighbor = {self.right_neighbor.node_id}")
