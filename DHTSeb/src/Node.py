@@ -1,62 +1,27 @@
 class Node:
-    storage = {}
+    def __init__(self, env, node_id):
+        self.env = env
+        self.id = node_id
+        self.left_neighbor = None
+        self.right_neighbor = None
 
-    def __init__(self, id):
-        self.id = id
-        self.left = self
-        self.right = self
-        Node.storage[id] = ""
+    def find_position(self, new_node, starting_node=None):
+        if starting_node is None:
+            starting_node = self
 
-    def join(self, new_node):
-        current = self
-        while new_node.id <= current.id or new_node.id >= current.right.id:
-            current = current.right
-            if current == self:
-                break
-        new_node.right = current.right
-        new_node.left = current
-        current.right.left = new_node
-        current.right = new_node
-
-    def leave(self):
-        self.left.right = self.right
-        self.right.left = self.left
-
-    def send_message(self, destination_id, message):
-        target = self
-        while target.id != destination_id:
-            print("Routing through node:", target.id)
-            target = target.right
-            if target == self:
-                print("Destination not found.")
-                return
-        print("Delivered to node", destination_id, ":", message)
-
-    @staticmethod
-    def put(key, value):
-        if key in Node.storage:
-            Node.storage[key] = value
-        else:
-            nearest_key = Node.find_nearest_key(key)
-            if nearest_key != -1:
-                Node.storage[nearest_key] = value
+        # Éviter la récursion infinie en vérifiant si nous avons fait un tour complet.
+        if new_node.id != starting_node.id:
+            if self.id < new_node.id < self.right_neighbor.id or (self.right_neighbor == starting_node and (new_node.id < self.id or new_node.id > self.right_neighbor.id)):
+                # Insérer ici
+                new_node.left_neighbor = self
+                new_node.right_neighbor = self.right_neighbor
+                self.right_neighbor.left_neighbor = new_node
+                self.right_neighbor = new_node
+                print(f"Inserting node {new_node.id} between {self.id} and {new_node.right_neighbor.id}")
             else:
-                Node.storage[key] = value
+                # Continuer la recherche.
+                self.right_neighbor.find_position(new_node, starting_node)
 
-    def get(self, key):
-        if key in Node.storage:
-            return Node.storage[key]
-        else:
-            nearest_key = Node.find_nearest_key(key)
-            return Node.storage[nearest_key] if nearest_key != -1 else None
 
-    @staticmethod
-    def find_nearest_key(key):
-        min_diff = float('inf')
-        nearest_key = -1
-        for stored_key in Node.storage.keys():
-            diff = abs(stored_key - key)
-            if diff < min_diff:
-                min_diff = diff
-                nearest_key = stored_key
-        return nearest_key
+
+

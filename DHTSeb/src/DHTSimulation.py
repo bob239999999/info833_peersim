@@ -14,12 +14,12 @@ class Node:
             self.right_neighbor = self
         else:
             joining_node = random.choice(network.nodes)
-            self.right_neighbor = joining_node
-            self.left_neighbor = joining_node.left_neighbor
-            joining_node.left_neighbor.right_neighbor = self
-            joining_node.left_neighbor = self
-            joining_node.update_neighbors()
-            print(f"Node {self.node_id} contacting node {joining_node.node_id} to join the ring")
+            nearest_node = joining_node.find_nearest_node(self.node_id)
+            self.left_neighbor = nearest_node
+            self.right_neighbor = nearest_node.right_neighbor
+            nearest_node.right_neighbor.left_neighbor = self
+            nearest_node.right_neighbor = self
+            print(f"Node {self.node_id} contacting node {nearest_node.node_id} to join the ring")
 
         network.add_node(self)
         print(f"Node {self.node_id} joined the ring at time {self.env.now}")
@@ -54,6 +54,14 @@ class Node:
             self.left_neighbor.right_neighbor = self
             self.right_neighbor.left_neighbor = self
 
+    def find_nearest_node(self, new_node_id):
+        current_node = self
+        while new_node_id > current_node.right_neighbor.node_id:
+            current_node = current_node.right_neighbor
+            if current_node == self:
+                break
+        return current_node
+
 class Network:
     def __init__(self):
         self.nodes = []
@@ -80,13 +88,11 @@ def create_nodes(env, network, num_nodes):
     leaving_node = random.choice(network.nodes)
     leaving_node.leave_ring(network)
     yield env.timeout(1)
-
     new_node_id = random.randint(1, 100)
     while new_node_id in used_ids:
         new_node_id = random.randint(1, 100)
     new_node = Node(env, new_node_id)
     new_node.join_ring(network)
-
     print(f"Elapsed time: {env.now}")
     network.nodes[0].print_ring(network)
 
@@ -97,6 +103,12 @@ if __name__ == "__main__":
     env.process(create_nodes(env, network, 5))
 
     env.run()
+
+
+
+
+
+
 
 
 
