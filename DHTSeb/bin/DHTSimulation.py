@@ -103,6 +103,8 @@ class Network:
         for existing_node in self.nodes:
             if existing_node.node_id > node.node_id:
                 break
+            message = Message(sender=node, recipient=existing_node , message_type='FIND_NODE')
+            existing_node.send(message)
             index += 1
         self.nodes.insert(index, node)
 
