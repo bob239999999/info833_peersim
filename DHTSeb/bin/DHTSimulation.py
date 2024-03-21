@@ -72,6 +72,8 @@ class Network:
         for existing_node in self.nodes:
             if existing_node.node_id > node.node_id:
                 break
+            message = Message(sender=node, recipient=existing_node , message_type='FIND_NODE')
+            existing_node.send(message)
             index += 1
         self.nodes.insert(index, node)
 
@@ -166,9 +168,7 @@ def create_graph(listeNode):
 if __name__ == "__main__":
     env = simpy.Environment()
     network = Network()
-
     env.process(create_nodes(env, network, 5))
-
     env.run()
     create_graph(network.nodes)
 
