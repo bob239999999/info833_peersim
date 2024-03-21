@@ -28,10 +28,10 @@ class Node:
                 break
 
         # Update the neighbors
-        self.right_neighbor = network.nodes[insert_index]
-        self.left_neighbor = network.nodes[insert_index].left_neighbor
-        self.left_neighbor.right_neighbor = self
+        self.left_neighbor = network.nodes[insert_index]
+        self.right_neighbor = network.nodes[insert_index].right_neighbor
         self.right_neighbor.left_neighbor = self
+        self.left_neighbor.right_neighbor = self
         network.add_node(self)
 
         print(f"Node {self.node_id} joined the ring at time {self.env.now}")
@@ -128,4 +128,4 @@ if __name__ == "__main__":
     env.process(create_nodes(env, network, 5))
 
     env.run()
-    create_graph(network.nodes) 
+    create_graph(network.nodes)
