@@ -14,35 +14,46 @@ class Node:
         if not network.nodes:
             self.left_neighbor = self
             self.right_neighbor = self
-        else:
-            joining_node = random.choice(network.nodes)
-            self.left_neighbor = joining_node
-            self.right_neighbor = joining_node.right_neighbor
-            joining_node.right_neighbor.left_neighbor = self
-            joining_node.right_neighbor = self
-            print(f"Node {self.node_id} contacting node {joining_node.node_id} to join the ring")
+            network.add_node(self)
+            print(f"Node {self.node_id} joined the ring at time {self.env.now}")
+            self.print_neighbors()
+            self.print_ring(network)
+            return
 
+        # Find the correct position for the new node in the ring based on its ID
+        insert_index = 0
+        for i, node in enumerate(network.nodes):
+            if node.node_id > self.node_id:
+                insert_index = i
+                break
+
+        # Update the neighbors
+        self.right_neighbor = network.nodes[insert_index]
+        self.left_neighbor = network.nodes[insert_index].left_neighbor
+        self.left_neighbor.right_neighbor = self
+        self.right_neighbor.left_neighbor = self
         network.add_node(self)
+
         print(f"Node {self.node_id} joined the ring at time {self.env.now}")
         self.print_neighbors()
         self.print_ring(network)
-
 
     def leave_ring(self, network):
         print(f"Node {self.node_id} leaving the ring at time {self.env.now}")
         self.print_neighbors()
         self.print_ring(network)
+
         if self.left_neighbor == self and self.right_neighbor == self:
             network.remove_node(self)
-        else:
-            self.right_neighbor.left_neighbor = self.left_neighbor
-            self.left_neighbor.right_neighbor = self.right_neighbor
-            if network.nodes[0] == self:  # Update the left neighbor of the right neighbor of the first node
-                network.nodes[-1].right_neighbor = self.right_neighbor
-            # Update the left and right neighbors of the leaving node's new neighbors
-            self.left_neighbor.right_neighbor = self.right_neighbor
-            self.right_neighbor.left_neighbor = self.left_neighbor
-            network.remove_node(self)
+            return
+
+        self.left_neighbor.right_neighbor = self.right_neighbor
+        self.right_neighbor.left_neighbor = self.left_neighbor
+
+        if network.nodes[0] == self:
+            network.nodes[-1].right_neighbor = self.right_neighbor
+
+        network.remove_node(self)
 
     def print_neighbors(self):
         print(f"Node {self.node_id}: Left Neighbor = {self.left_neighbor.node_id}, Right Neighbor = {self.right_neighbor.node_id}")
@@ -56,11 +67,17 @@ class Network:
         self.nodes = []
 
     def add_node(self, node):
-        self.nodes.append(node)
-        self.nodes.sort(key=lambda x: x.node_id)
+        # Find the correct position to insert the node based on its ID
+        index = 0
+        for existing_node in self.nodes:
+            if existing_node.node_id > node.node_id:
+                break
+            index += 1
+        self.nodes.insert(index, node)
 
     def remove_node(self, node):
         self.nodes.remove(node)
+
 
 def create_nodes(env, network, num_nodes):
     used_ids = set()
@@ -86,6 +103,7 @@ def create_nodes(env, network, num_nodes):
 
     print(f"Elapsed time: {env.now}")
     network.nodes[0].print_ring(network)
+
 
 def create_graph(listeNode):
     G = nx.Graph()
