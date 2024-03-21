@@ -1,5 +1,7 @@
 import simpy
 import random
+import matplotlib.pyplot as plt
+import networkx as nx
 
 class Node:
     def __init__(self, env, node_id):
@@ -14,17 +16,17 @@ class Node:
             self.right_neighbor = self
         else:
             joining_node = random.choice(network.nodes)
-            self.right_neighbor = joining_node
-            self.left_neighbor = joining_node.left_neighbor
-            joining_node.left_neighbor.right_neighbor = self
-            joining_node.left_neighbor = self
-            joining_node.update_neighbors()
+            self.left_neighbor = joining_node
+            self.right_neighbor = joining_node.right_neighbor
+            joining_node.right_neighbor.left_neighbor = self
+            joining_node.right_neighbor = self
             print(f"Node {self.node_id} contacting node {joining_node.node_id} to join the ring")
 
         network.add_node(self)
         print(f"Node {self.node_id} joined the ring at time {self.env.now}")
         self.print_neighbors()
         self.print_ring(network)
+
 
     def leave_ring(self, network):
         print(f"Node {self.node_id} leaving the ring at time {self.env.now}")
@@ -35,8 +37,11 @@ class Node:
         else:
             self.right_neighbor.left_neighbor = self.left_neighbor
             self.left_neighbor.right_neighbor = self.right_neighbor
-            self.right_neighbor.update_neighbors()
-            self.left_neighbor.update_neighbors()
+            if network.nodes[0] == self:  # Update the left neighbor of the right neighbor of the first node
+                network.nodes[-1].right_neighbor = self.right_neighbor
+            # Update the left and right neighbors of the leaving node's new neighbors
+            self.left_neighbor.right_neighbor = self.right_neighbor
+            self.right_neighbor.left_neighbor = self.left_neighbor
             network.remove_node(self)
 
     def print_neighbors(self):
@@ -45,14 +50,6 @@ class Node:
     def print_ring(self, network):
         ring = "->".join(str(node.node_id) for node in network.nodes)
         print(f"Ring: {ring}")
-
-    def update_neighbors(self):
-        if self.left_neighbor == self and self.right_neighbor == self:
-            self.left_neighbor = self
-            self.right_neighbor = self
-        else:
-            self.left_neighbor.right_neighbor = self
-            self.right_neighbor.left_neighbor = self
 
 class Network:
     def __init__(self):
@@ -90,6 +87,22 @@ def create_nodes(env, network, num_nodes):
     print(f"Elapsed time: {env.now}")
     network.nodes[0].print_ring(network)
 
+def create_graph(listeNode):
+    G = nx.Graph()
+
+    for node in listeNode:
+        G.add_node(node.node_id, label=f"Node {node.node_id}\nLeft: {node.left_neighbor.node_id}\nRight: {node.right_neighbor.node_id}")
+
+    for node in listeNode:
+        G.add_edge(node.node_id, node.left_neighbor.node_id)
+        G.add_edge(node.node_id, node.right_neighbor.node_id)
+
+    pos = nx.spring_layout(G)  # Compute layout for better visualization
+    node_labels = nx.get_node_attributes(G, 'label')
+    nx.draw(G, pos, with_labels=True, labels=node_labels)
+    plt.show()
+
+
 if __name__ == "__main__":
     env = simpy.Environment()
     network = Network()
@@ -97,15 +110,4 @@ if __name__ == "__main__":
     env.process(create_nodes(env, network, 5))
 
     env.run()
-
-
-
-
-
-
-
-
-
-
-
-
+    create_graph(network.nodes) 
