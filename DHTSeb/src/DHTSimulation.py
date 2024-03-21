@@ -1,45 +1,110 @@
-from Node import Node
+import simpy
+import random
 
-class DHTSimulation:
+class Node:
+    def __init__(self, env, node_id):
+        self.env = env
+        self.node_id = node_id
+        self.left_neighbor = None
+        self.right_neighbor = None
+
+    def join_ring(self, network):
+        if not network.nodes:
+            self.left_neighbor = self
+            self.right_neighbor = self
+        else:
+            joining_node = random.choice(network.nodes)
+            self.right_neighbor = joining_node
+            self.left_neighbor = joining_node.left_neighbor
+            joining_node.left_neighbor.right_neighbor = self
+            joining_node.left_neighbor = self
+            joining_node.update_neighbors()
+            print(f"Node {self.node_id} contacting node {joining_node.node_id} to join the ring")
+
+        network.add_node(self)
+        print(f"Node {self.node_id} joined the ring at time {self.env.now}")
+        self.print_neighbors()
+        self.print_ring(network)
+
+    def leave_ring(self, network):
+        print(f"Node {self.node_id} leaving the ring at time {self.env.now}")
+        self.print_neighbors()
+        self.print_ring(network)
+        if self.left_neighbor == self and self.right_neighbor == self:
+            network.remove_node(self)
+        else:
+            self.right_neighbor.left_neighbor = self.left_neighbor
+            self.left_neighbor.right_neighbor = self.right_neighbor
+            self.right_neighbor.update_neighbors()
+            self.left_neighbor.update_neighbors()
+            network.remove_node(self)
+
+    def print_neighbors(self):
+        print(f"Node {self.node_id}: Left Neighbor = {self.left_neighbor.node_id}, Right Neighbor = {self.right_neighbor.node_id}")
+
+    def print_ring(self, network):
+        ring = "->".join(str(node.node_id) for node in network.nodes)
+        print(f"Ring: {ring}")
+
+    def update_neighbors(self):
+        if self.left_neighbor == self and self.right_neighbor == self:
+            self.left_neighbor = self
+            self.right_neighbor = self
+        else:
+            self.left_neighbor.right_neighbor = self
+            self.right_neighbor.left_neighbor = self
+
+class Network:
     def __init__(self):
-        pass
+        self.nodes = []
 
-    @staticmethod
-    def main():
-        var1 = Node(1)
-        var2 = Node(2)
-        var1.join(var2)
-        var3 = Node(4)
-        var1.join(var3)
-        var4 = Node(3)
-        var1.join(var4)
+    def add_node(self, node):
+        self.nodes.append(node)
+        self.nodes.sort(key=lambda x: x.node_id)
 
-        print("After insertion:")
-        print("Node 1 Neighbors: left =", var1.left.id, ", right =", var1.right.id)
-        print("Node 2 Neighbors: left =", var2.left.id, ", right =", var2.right.id)
-        print("Node 0 Neighbors: left =", var3.left.id, ", right =", var3.right.id)
-        print("Node 3 Neighbors: left =", var4.left.id, ", right =", var4.right.id)
+    def remove_node(self, node):
+        self.nodes.remove(node)
 
-        print("\nTest message routing:")
-        var1.send_message(3, "Hello, Node 3!")
-        print()
+def create_nodes(env, network, num_nodes):
+    used_ids = set()
+    for i in range(num_nodes):
+        node_id = random.randint(1, 100)
+        while node_id in used_ids:
+            node_id = random.randint(1, 100)
+        used_ids.add(node_id)
+        node = Node(env, node_id)
+        node.join_ring(network)
+        yield env.timeout(random.randint(1, 5))
+        print(f"Elapsed time: {env.now}")
 
-        print("\nTest data storage:")
-        Node.put(1, "Data A")
-        Node.put(2, "Data B")
-        Node.put(4, "Data D")
-        Node.put(3, "Data C")
+    leaving_node = random.choice(network.nodes)
+    leaving_node.leave_ring(network)
+    yield env.timeout(1)
 
-        print("Data at key 1 (Node 1):", var1.get(1))
-        print("Data at key 2 (Node 2):", var2.get(2))
-        print("Data at key 3 (Node 3):", var4.get(3))
-        print("Data at key 4 (Node 4):", var3.get(4))
+    new_node_id = random.randint(1, 100)
+    while new_node_id in used_ids:
+        new_node_id = random.randint(1, 100)
+    new_node = Node(env, new_node_id)
+    new_node.join_ring(network)
 
-        var2.leave()
-        print("\nAfter the departure of Node 2:")
-        print("Node 1 Neighbors: left =", var1.left.id, ", right =", var1.right.id)
-        print("Node 4 Neighbors: left =", var3.left.id, ", right =", var3.right.id)
+    print(f"Elapsed time: {env.now}")
+    network.nodes[0].print_ring(network)
 
-# Run the main method when this script is executed
 if __name__ == "__main__":
-    DHTSimulation.main()
+    env = simpy.Environment()
+    network = Network()
+
+    env.process(create_nodes(env, network, 5))
+
+    env.run()
+
+
+
+
+
+
+
+
+
+
+
