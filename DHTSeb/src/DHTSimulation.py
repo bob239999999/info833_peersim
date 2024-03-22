@@ -4,10 +4,11 @@ import matplotlib.pyplot as plt
 import networkx as nx
 
 class Message:
-    def __init__(self, sender, recipient, message_type):
+    def __init__(self, sender, recipient, message_type, data=None):
         self.sender = sender
         self.recipient = recipient
         self.type = message_type
+        self.data = data
 
 class Node:
     def __init__(self, env, node_id):
@@ -94,11 +95,11 @@ class Node:
                 yield self.env.timeout(1)
             else:
                 if message.type == 'JOIN':
-                    print(f"Node {self.node_id} received a JOIN message from {message.sender.node_id}")
+                    print(f"Node {self.node_id} received a JOIN message from Node {message.sender.node_id}")
                 elif message.type == 'LEAVE':
-                    print(f"Node {self.node_id} received a LEAVE message from {message.sender.node_id}")
+                    print(f"Node {self.node_id} received a LEAVE message from Node {message.sender.node_id}")
                 elif message.type == 'FORWARD':
-                    print(f"Node {self.node_id} received FORWARD message from {message.sender.node_id}: {message.data}")
+                    print(f"Node {self.node_id} received FORWARD message from Node {message.sender.node_id}: {message.data}")
                 yield self.env.timeout(20)
 
     def receive(self):
@@ -106,6 +107,30 @@ class Node:
             return None
         else:
             return self.inbox.pop(0)
+
+    def send_message(self, message_type, data=None):
+        if message_type == 'JOIN':
+            recipient = random.choice(self.network.nodes)
+            message = Message(sender=self, recipient=recipient, message_type=message_type)
+            recipient.receive_message(message)
+            print(f"Node {self.node_id} sent a JOIN message to Node {recipient.node_id}")
+        elif message_type == 'LEAVE':
+            left_neighbor = self.left_neighbor
+            right_neighbor = self.right_neighbor
+            message = Message(sender=self, recipient=left_neighbor, message_type=message_type)
+            left_neighbor.receive_message(message)
+            print(f"Node {self.node_id} sent a LEAVE message to Node {left_neighbor.node_id}")
+            message = Message(sender=self, recipient=right_neighbor, message_type=message_type)
+            right_neighbor.receive_message(message)
+            print(f"Node {self.node_id} sent a LEAVE message to Node {right_neighbor.node_id}")
+
+    def receive_message(self, message):
+        if message.type == 'JOIN':
+            print(f"Node {self.node_id} received a JOIN message from Node {message.sender.node_id}")
+        elif message.type == 'LEAVE':
+            print(f"Node {self.node_id} received a LEAVE message from Node {message.sender.node_id}")
+        elif message.type == 'FORWARD':
+            print(f"Node {self.node_id} received a FORWARD message from Node {message.sender.node_id}: {message.data}")
 
 class Network:
     def __init__(self):
@@ -141,6 +166,7 @@ def create_nodes(env, network, num_nodes):
             node_id = random.randint(1, 100)
         used_ids.add(node_id)
         node = Node(env, node_id)
+        node.network = network  # Assign the network reference to the node
         node.join_ring(network)
         yield env.timeout(random.randint(1, 5))
         print(f"Elapsed time: {env.now}")
@@ -154,39 +180,13 @@ def create_nodes(env, network, num_nodes):
         new_node_id = random.randint(1, 100)
 
     # Find the closest node to the new node ID
-    closest_node = find_closest_node(new_node_id, network.nodes)
-
+    closest_node = find_closest_node(new_node_id,network.nodes)
     # Inform the closest node about the new node
     print(f"Node {closest_node.node_id} received a JOIN request from Node {new_node_id}")
+    closest_node.send_message('JOIN')
 
     # Inform neighbors of the closest node
-    print(f"Node {closest_node.node_id} contacting neighbors {closest_node.left_neighbor.node_id} and {closest_node.right_neighbor.node_id}")
-    left_closest_node = find_closest_node(closest_node.left_neighbor.node_id, network.nodes)
-    right_closest_node = find_closest_node(closest_node.right_neighbor.node_id, network.nodes)
-
-    print(f"Node {left_closest_node.node_id} and Node {right_closest_node.node_id} contacted")
-    print(f"Node {left_closest_node.node_id} and Node {right_closest_node.node_id} comparing IDs...")
-
-    # Choose the neighbor with the closest ID
-    if abs(left_closest_node.node_id - new_node_id) < abs(right_closest_node.node_id - new_node_id):
-        chosen_neighbor = left_closest_node
-    else:
-        chosen_neighbor = right_closest_node
-
-    print(f"Node {chosen_neighbor.node_id} selected as closest neighbor")
-
-    # Update neighbors of the chosen node
-    new_node = Node(env, new_node_id)
-    new_node.left_neighbor = chosen_neighbor
-    new_node.right_neighbor = chosen_neighbor.right_neighbor
-    chosen_neighbor.right_neighbor.left_neighbor = new_node
-    chosen_neighbor.right_neighbor = new_node
-
-    network.add_node(new_node)
-
-    print(f"Node {new_node_id} joined the ring at time {env.now}")
-    new_node.print_neighbors()
-    new_node.print_ring(network)
+    closest_node.send_message('FORWARD')
 
     yield env.timeout(1)
 
@@ -194,19 +194,19 @@ def create_nodes(env, network, num_nodes):
     network.nodes[0].print_ring(network)
 
 def create_graph(listeNode):
-    G = nx.Graph()
+        G = nx.Graph()
 
-    for node in listeNode:
-        G.add_node(node.node_id, label=f"Node {node.node_id}\nLeft: {node.left_neighbor.node_id}\nRight: {node.right_neighbor.node_id}")
+        for node in listeNode:
+            G.add_node(node.node_id, label=f"Node {node.node_id}\nLeft: {node.left_neighbor.node_id}\nRight: {node.right_neighbor.node_id}")
 
-    for node in listeNode:
-        G.add_edge(node.node_id, node.left_neighbor.node_id)
-        G.add_edge(node.node_id, node.right_neighbor.node_id)
+        for node in listeNode:
+            G.add_edge(node.node_id, node.left_neighbor.node_id)
+            G.add_edge(node.node_id, node.right_neighbor.node_id)
 
-    pos = nx.spring_layout(G)  # Compute layout for better visualization
-    node_labels = nx.get_node_attributes(G, 'label')
-    nx.draw(G, pos, with_labels=True, labels=node_labels)
-    plt.show()
+        pos = nx.spring_layout(G)  # Compute layout for better visualization
+        node_labels = nx.get_node_attributes(G, 'label')
+        nx.draw(G, pos, with_labels=True, labels=node_labels)
+        plt.show()
 
 if __name__ == "__main__":
     env = simpy.Environment()
@@ -216,4 +216,3 @@ if __name__ == "__main__":
 
     env.run()
     create_graph(network.nodes)
-
