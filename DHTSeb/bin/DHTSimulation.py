@@ -3,12 +3,20 @@ import random
 import matplotlib.pyplot as plt
 import networkx as nx
 
+class Message:
+    def __init__(self, sender, recipient, message_type, data=None):
+        self.sender = sender
+        self.recipient = recipient
+        self.type = message_type
+        self.data = data
+
 class Node:
     def __init__(self, env, node_id):
         self.env = env
         self.node_id = node_id
         self.left_neighbor = None
         self.right_neighbor = None
+        self.inbox = []
 
     def join_ring(self, network):
         if not network.nodes:
@@ -62,6 +70,50 @@ class Node:
         ring = "->".join(str(node.node_id) for node in network.nodes)
         print(f"Ring: {ring}")
 
+    def send_message(self, message_type, data=None):
+        if message_type == 'JOIN':
+            recipient = random.choice(self.network.nodes)
+            message = Message(sender=self, recipient=recipient, message_type=message_type)
+            recipient.receive_message(message)
+            print(f"Node {self.node_id} sent a JOIN message to Node {recipient.node_id}")
+        elif message_type == 'LEAVE':
+            left_neighbor = self.left_neighbor
+            right_neighbor = self.right_neighbor
+            message = Message(sender=self, recipient=left_neighbor, message_type=message_type)
+            left_neighbor.receive_message(message)
+            print(f"Node {self.node_id} sent a LEAVE message to Node {left_neighbor.node_id}")
+            message = Message(sender=self, recipient=right_neighbor, message_type=message_type)
+            right_neighbor.receive_message(message)
+            print(f"Node {self.node_id} sent a LEAVE message to Node {right_neighbor.node_id}")
+
+    def receive_message(self, message):
+        if message.type == 'JOIN':
+            print(f"Node {self.node_id} received a JOIN message from Node {message.sender.node_id}")
+        elif message.type == 'LEAVE':
+            print(f"Node {self.node_id} received a LEAVE message from Node {message.sender.node_id}")
+        elif message.type == 'FORWARD':
+            print(f"Node {self.node_id} received a FORWARD message from Node {message.sender.node_id}: {message.data}")
+
+    def process_messages(self):
+        while True:
+            message = self.receive()
+            if message is None:
+                yield self.env.timeout(1)
+            else:
+                if message.type == 'JOIN':
+                    print(f"Node {self.node_id} received a JOIN message from {message.sender.node_id}")
+                elif message.type == 'LEAVE':
+                    print(f"Node {self.node_id}, your neighbour {message.sender.node_id} will LEAVE the DHT")
+                elif message.type == 'FORWARD':
+                    print(f"Node {self.node_id} received FORWARD message from {message.sender.node_id}: {message.data}")
+                yield self.env.timeout(20)
+
+    def receive(self):
+        if not self.inbox:
+            return None
+        else:
+            return self.inbox.pop(0)
+
 class Network:
     def __init__(self):
         self.nodes = []
@@ -73,22 +125,12 @@ class Network:
             if existing_node.node_id > node.node_id:
                 break
             message = Message(sender=node, recipient=existing_node , message_type='FIND_NODE')
-            existing_node.send(message)
+            existing_node.send_message('FIND_NODE')
             index += 1
         self.nodes.insert(index, node)
 
     def remove_node(self, node):
         self.nodes.remove(node)
-
-def find_closest_node(node_id, node_list):
-    closest_node = None
-    min_distance = float('inf')
-    for node in node_list:
-        distance = min(abs(node_id - node.node_id), len(node_list) - abs(node_id - node.node_id))
-        if distance < min_distance:
-            closest_node = node
-            min_distance = distance
-    return closest_node
 
 def create_nodes(env, network, num_nodes):
     used_ids = set()
@@ -99,53 +141,33 @@ def create_nodes(env, network, num_nodes):
         used_ids.add(node_id)
         node = Node(env, node_id)
         node.join_ring(network)
+        node.network = network  # Set the network for the node
+        
+        # Send JOIN message to a random node in the network
+        if len(network.nodes) > 1:
+            node.send_message('JOIN')
+        
         yield env.timeout(random.randint(1, 5))
         print(f"Elapsed time: {env.now}")
 
     leaving_node = random.choice(network.nodes)
     leaving_node.leave_ring(network)
+    
+    # Send LEAVE message to neighbors
+    leaving_node.send_message('LEAVE')
+    
     yield env.timeout(1)
 
     new_node_id = random.randint(1, 100)
     while new_node_id in used_ids:
         new_node_id = random.randint(1, 100)
-
-    # Find the closest node to the new node ID
-    closest_node = find_closest_node(new_node_id, network.nodes)
-
-    # Inform the closest node about the new node
-    print(f"Node {closest_node.node_id} received a JOIN request from Node {new_node_id}")
-
-    # Inform neighbors of the closest node
-    print(f"Node {closest_node.node_id} contacting neighbors {closest_node.left_neighbor.node_id} and {closest_node.right_neighbor.node_id}")
-    left_closest_node = find_closest_node(closest_node.left_neighbor.node_id, network.nodes)
-    right_closest_node = find_closest_node(closest_node.right_neighbor.node_id, network.nodes)
-
-    print(f"Node {left_closest_node.node_id} and Node {right_closest_node.node_id} contacted")
-    print(f"Node {left_closest_node.node_id} and Node {right_closest_node.node_id} comparing IDs...")
-
-    # Choose the neighbor with the closest ID
-    if abs(left_closest_node.node_id - new_node_id) < abs(right_closest_node.node_id - new_node_id):
-        chosen_neighbor = left_closest_node
-    else:
-        chosen_neighbor = right_closest_node
-
-    print(f"Node {chosen_neighbor.node_id} selected as closest neighbor")
-
-    # Update neighbors of the chosen node
     new_node = Node(env, new_node_id)
-    new_node.left_neighbor = chosen_neighbor
-    new_node.right_neighbor = chosen_neighbor.right_neighbor
-    chosen_neighbor.right_neighbor.left_neighbor = new_node
-    chosen_neighbor.right_neighbor = new_node
-
-    network.add_node(new_node)
-
-    print(f"Node {new_node_id} joined the ring at time {env.now}")
-    new_node.print_neighbors()
-    new_node.print_ring(network)
-
-    yield env.timeout(1)
+    new_node.join_ring(network)
+    new_node.network = network  # Set the network for the new node
+    
+    # Send JOIN message to a random node in the network
+    if len(network.nodes) > 1:
+        new_node.send_message('JOIN')
 
     print(f"Elapsed time: {env.now}")
     network.nodes[0].print_ring(network)
@@ -171,4 +193,3 @@ if __name__ == "__main__":
     env.process(create_nodes(env, network, 5))
     env.run()
     create_graph(network.nodes)
-
