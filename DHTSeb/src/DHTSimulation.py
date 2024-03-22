@@ -110,9 +110,6 @@ class Node:
                 # If there are no messages, wait for a timeout
                 yield self.env.timeout(1)
 
-
-
-
     def receive(self):
         if not self.inbox:
             return None
@@ -127,7 +124,13 @@ class Node:
             print(f"Message received: Node {self.node_id} received a {message.type} message from Node {message.sender.node_id}")
             print(f"RECEIVE: Node {self.node_id} <- Node {message.sender.node_id}, Type: {message.type}")
             return message
- 
+
+    def send_hello_message(self, network):
+        # Choose a random node in the network to send the hello message
+        recipient_node = random.choice(network.nodes)
+        hello_message = Message(sender=self, recipient=recipient_node, message_type='HELLO')
+        self.send(hello_message)
+
 class Network:
     def __init__(self):
         self.nodes = []
@@ -181,7 +184,7 @@ def create_nodes(env, network, num_nodes):
     print(f"Node {closest_node.node_id} received a JOIN request from Node {new_node_id}")
 
     # Inform neighbors of the closest node
-    print(f"Node {closest_node.node_id} contacting neighbors {closest_node.left_neighbor.node_id} and {closest_node.right_neighbor.node_id}")
+    print(f"Node {closest_node.node_id } contacting neighbors {closest_node.left_neighbor.node_id} and {closest_node.right_neighbor.node_id}")
     left_closest_node = find_closest_node(closest_node.left_neighbor.node_id, network.nodes)
     right_closest_node = find_closest_node(closest_node.right_neighbor.node_id, network.nodes)
 
@@ -213,6 +216,9 @@ def create_nodes(env, network, num_nodes):
     print(f"Elapsed time: {env.now}")
     network.nodes[0].print_ring(network)
 
+    # Sending a hello message
+    new_node.send_hello_message(network)
+
 def create_graph(listeNode):
     G = nx.Graph()
 
@@ -240,6 +246,8 @@ if __name__ == "__main__":
         print(f"An error occurred during the simulation: {e}")
     finally:
         create_graph(network.nodes)
+
+
 
 
 
