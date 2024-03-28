@@ -1,3 +1,6 @@
+
+from Message import Message
+import random
 class Node:
     def __init__(self, env, node_id):
         self.env = env
