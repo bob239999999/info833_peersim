@@ -6,6 +6,7 @@ import networkx as nx
 from Message import Message
 from Node import Node
 from Network import Network 
+from Fallible import Fallible
 
 def find_closest_node(node_id, node_list):
     closest_node = None
@@ -26,7 +27,7 @@ def create_nodes(env, network, num_nodes):
         used_ids.add(node_id)
         node = Node(env, node_id)
         node.join_ring(network)
-        yield env.timeout(random.randint(1, 5))
+        yield env.timeout(int(random.randint(1, 5)))
         print(f"Elapsed time: {env.now}")
 
     leaving_node = random.choice(network.nodes)
@@ -71,7 +72,7 @@ def create_nodes(env, network, num_nodes):
     new_node.print_neighbors()
     new_node.print_ring(network)
 
-    yield env.timeout(1)
+    yield env.timeout(int(1))
 
     print(f"Elapsed time: {env.now}")
     network.nodes[0].print_ring(network)
@@ -94,18 +95,33 @@ def create_graph(listeNode):
     nx.draw(G, pos, with_labels=True, labels=node_labels)
     plt.show()
 
+def simulate_failures(network):
+    # Choisissez aléatoirement certains nœuds et attribuez-leur l'état DEAD
+    num_failures = random.randint(1, len(network.nodes) // 2)  # Simulez jusqu'à la moitié des nœuds échoués
+    print(f"There is {num_failures} node failures")
+    failed_nodes = random.sample(network.nodes, num_failures)
+    for node in failed_nodes:
+        node.setfailstate(Fallible.DEAD)
+
 if __name__ == "__main__":
     env = simpy.Environment()
     network = Network()
-
     env.process(create_nodes(env, network, 5))
-
     try:
         env.run(until=100)  # Exécuter la simulation jusqu'à un certain temps (100 dans cet exemple)
-    except Exception as e:
-        print(f"An error occurred during the simulation: {e}")
-    finally:
+        simulate_failures(network)
         create_graph(network.nodes)
+
+         # Sending messages between nodes to fill inboxes
+        for node in network.nodes:
+            if node.right_neighbor:  # Ensure the node has a right neighbor
+                recipient_node = random.choice(network.nodes)
+                message = Message(node, recipient=recipient_node, message_type='HELLO')
+                node.send(message)
+
+    except Exception as e:
+        print(f"An error occurred during the simulation: ")
+
 
 
 
