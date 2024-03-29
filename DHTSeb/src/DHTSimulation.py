@@ -29,10 +29,12 @@ def create_nodes(env, network, num_nodes):
         node.join_ring(network)
         yield env.timeout(int(random.randint(1, 5)))
         print(f"Elapsed time: {env.now}")
+        create_graph(network.nodes, f"create_nodes_{i}.png")  # Generate image after adding a node
 
     leaving_node = random.choice(network.nodes)
     leaving_node.leave_ring(network)
     yield env.timeout(1)
+    create_graph(network.nodes, "leaving_node.png")  # Generate image after a node leaves
 
     new_node_id = random.randint(1, 100)
     while new_node_id in used_ids:
@@ -73,14 +75,15 @@ def create_nodes(env, network, num_nodes):
     new_node.print_ring(network)
 
     yield env.timeout(int(1))
-
     print(f"Elapsed time: {env.now}")
     network.nodes[0].print_ring(network)
 
     # Sending a hello message
     new_node.send_hello_message(network)
 
-def create_graph(listeNode):
+    create_graph(network.nodes, "join_ring.png")  # Generate image after a new node joins
+
+def create_graph(listeNode, filename):
     G = nx.Graph()
 
     for node in listeNode:
@@ -90,42 +93,60 @@ def create_graph(listeNode):
         G.add_edge(node.node_id, node.left_neighbor.node_id)
         G.add_edge(node.node_id, node.right_neighbor.node_id)
 
-    pos = nx.spring_layout(G)  # Compute layout for better visualization
+    pos = nx.kamada_kawai_layout(G)  # Compute Kamada-Kawai layout
     node_labels = nx.get_node_attributes(G, 'label')
     nx.draw(G, pos, with_labels=True, labels=node_labels)
-    plt.show()
+    plt.savefig(filename)  # Save the graph to an image file
+    plt.close()
 
 def simulate_failures(network):
-    # Choisissez aléatoirement certains nœuds et attribuez-leur l'état DEAD
-    num_failures = random.randint(1, len(network.nodes) // 2)  # Simulez jusqu'à la moitié des nœuds échoués
-    print(f"There is {num_failures} node failures")
+    # Choose randomly some nodes and set their state to DEAD
+    num_failures = random.randint(1, len(network.nodes) // 2)  # Simulate up to half of the nodes failed
+    print(f"There are {num_failures} node failures")
     failed_nodes = random.sample(network.nodes, num_failures)
     for node in failed_nodes:
-        node.setfailstate(Fallible.DEAD)
+        node.failstate = Fallible.DEAD
+    create_graph(network.nodes, "failures.png")  # Generate image after simulating failures
+
+def test_test(network, recipient_node):
+    # Send messages from other nodes to the recipient node
+    for sender_node in network.nodes:
+        if sender_node != recipient_node:
+            if sender_node.left_neighbor == recipient_node or sender_node.right_neighbor == recipient_node:
+                message = Message(sender=sender_node, recipient=recipient_node, message_type='ARRIVED')
+            else:
+                message = Message(sender=sender_node, recipient=recipient_node, message_type='FORWARD')
+            sender_node.send(message)
+    create_graph(network.nodes, "test_test.png")  # Generate image after testing
+
+def test_scenario(env, network):
+    print("Testing inbox delivery scenario")
+    # Choose a node to receive messages
+    recipient_node = random.choice(network.nodes)
+    print(f"Recipient node: {recipient_node.node_id}")
+
+    # Let the network deliver the messages to the recipient node
+    network.deliver()
+
+    # Display the contents of the recipient node's inbox
+    print(f"Recipient node's inbox after delivery:")
+    for msg in recipient_node.inbox:
+        print(f"Message from Node {msg.sender.node_id}, Type: {msg.message_type}")
+    create_graph(network.nodes, "test_scenario.png")  # Generate image after testing
 
 if __name__ == "__main__":
     env = simpy.Environment()
     network = Network()
-    env.process(create_nodes(env, network, 5))
+    env.process(create_nodes(env, network, 8))
+    
     try:
-        env.run(until=100)  # Exécuter la simulation jusqu'à un certain temps (100 dans cet exemple)
+        env.run(until=100)  
         simulate_failures(network)
-        create_graph(network.nodes)
 
-         # Sending messages between nodes to fill inboxes
-        for node in network.nodes:
-            if node.right_neighbor:  # Ensure the node has a right neighbor
-                recipient_node = random.choice(network.nodes)
-                message = Message(node, recipient=recipient_node, message_type='HELLO')
-                node.send(message)
-
+        print("-+-+-+-+")
+        network.broadcast()
+        network.print_inboxes()
+        #test_scenario(env, network)
+        create_graph(network.nodes, "broadcast.png")  # Generate image after broadcasting
     except Exception as e:
-        print(f"An error occurred during the simulation: ")
-
-
-
-
-
-
-
-
+        print(f"An error occurred during the simulation: {e}")

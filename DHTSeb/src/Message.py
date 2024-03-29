@@ -3,3 +3,9 @@ class Message:
         self.sender = sender
         self.recipient = recipient
         self.message_type = message_type
+        self.data = None
+   
+    def setdata(self, data):
+        self.data = data
+
+        

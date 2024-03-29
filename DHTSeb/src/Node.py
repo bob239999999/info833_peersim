@@ -15,6 +15,7 @@ class Node:
         #self.env.process(self.process_messages())  # Start processing messages
 
     def join_ring(self, network):
+        print("---JOIN RING --------------------------------")
         if not network.nodes:
             self.left_neighbor = self
             self.right_neighbor = self
@@ -43,6 +44,7 @@ class Node:
         self.print_ring(network)
 
     def leave_ring(self, network):
+        print("--- LEAVE RING --------------------------------")
         print(f"Node {self.node_id} leaving the ring at time {self.env.now}")
         self.print_neighbors()
         self.print_ring(network)
@@ -81,36 +83,30 @@ class Node:
         print(f"Ring: {ring}")
 
     def send(self, message):
-        print("sending message")
+        print("----*----*----*----*----*----*----*----")
         if self.failstate == Fallible.DEAD:
             print(f"Node {self.node_id} has failed during send.")
         else:
             message.recipient.inbox.append(message)
-            print(f"Message sent: Node {self.node_id} sent a {message.message_type} message to Node {message.recipient.node_id}")
-            print(f"SEND: Node {self.node_id} -> Node {message.recipient.node_id}, Type: {message.message_type}")
+            print(f"Node {message.sender.node_id} send a JOIN message from {message.recipient.node_id}")
+            self.process_messages(message) 
 
+    def process_messages(self, message):
 
-    def process_messages(self):
-        print("Processing messages")
-        while True:
-            # Check if there are messages in the inbox
-            if self.inbox:
-                # Process each message in the inbox
-                for _ in range(len(self.inbox)):
-                    message = self.inbox.pop(0)
-                    if message is not None:
-                        if message.message_type == 'JOIN':
-                            print(f"Node {self.node_id} received a JOIN message from {message.sender.node_id}")
-                        elif message.message_type == 'LEAVE':
-                            print(f"Node {self.node_id} received a LEAVE message from {message.sender.node_id}")
-                        elif message.message_type == 'FORWARD':
-                            print(f"Node {self.node_id} received FORWARD message from {message.sender.node_id}: {message.data}")
-                    yield self.env.timeout(20)  # Timeout after processing each message
-                self.finished.succeed()  # Signal that all messages in the inbox have been processed
-            else:
-                # If there are no messages, wait for a timeout
-                yield self.env.timeout(1)
-
+        if message.message_type == 'JOIN':
+            print(f"Node {message.recipient.node_id} received a JOIN message from {message.sender.node_id}")
+        elif message.message_type == 'BROADCAST':
+            print(f"Node {message.recipient.node_id} received a BROADCAST message from {message.sender.node_id}")
+        elif message.message_type == 'LEAVE':
+            print(f"Node {message.recipient.node_id} received a LEAVE message from {message.sender.node_id}")
+        elif message.message_type == 'FORWARD':
+            print(f"Node {message.recipient.node_id} received FORWARD message from {message.sender.node_id}")
+        elif message.message_type == 'TEST':
+            print(f"Node {message.recipient.node_id} received a TEST message from {message.sender.node_id}")
+        elif message.message_type == 'ARRIVED':
+            print(f"Node {message.recipient.node_id} received a ARRIVED message from {message.sender.node_id}:{message.data}")
+        else:
+            print("Unknown message type")
 
     def send_hello_message(self, network):
         # Choose a random node in the network to send the hello message
@@ -133,8 +129,8 @@ class Node:
             return None
         else:
             message = self.inbox.pop(0)
-            print(f"Message received: Node {self.node_id} received a {message.type} message from Node {message.sender.node_id}")
-            print(f"RECEIVE: Node {self.node_id} <- Node {message.sender.node_id}, Type: {message.type}")
+            print(f"Message received: Node {self.node_id} received a {message.message_type} message from Node {message.sender.node_id}")
+            print(f"RECEIVE: Node {self.node_id} <- Node {message.sender.node_id}, Type: {message.message_type}")
             return message
 
     def setfailstate(self, state):
