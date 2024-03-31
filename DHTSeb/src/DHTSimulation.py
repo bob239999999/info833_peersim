@@ -7,6 +7,8 @@ from Message import Message
 from Node import Node
 from Network import Network 
 
+use_advanced_routing = False  # Mettez à False pour désactiver le routage avancé
+
 
 def find_closest_node(node_id, node_list):
     closest_node = None
@@ -25,7 +27,8 @@ def create_nodes(env, network, num_nodes):
         while node_id in used_ids:
             node_id = random.randint(1, 100)
         used_ids.add(node_id)
-        node = Node(env, node_id)
+        # Passez use_advanced_routing comme argument à Node
+        node = Node(env, node_id, advanced_routing=use_advanced_routing)
         node.join_ring(network)
         yield env.timeout(int(random.randint(1, 5)))
         print(f"Elapsed time: {env.now}")
@@ -109,8 +112,9 @@ if __name__ == "__main__":
 
     try:
         env.run(until=100)  # Exécute la simulation, ce qui inclut l'ajout de nœuds
+
         
-        print("\n=== Début du Stockage des Données dans le Réseau DHT ===")
+        print("\n=== Début du Stockage des Données dans le Réseau DHT l'étape 3 ===")
         key = random.randint(1, 100)
         value = "DonnéeTest"
         responsible_node = network.find_responsible_node(key)
@@ -119,6 +123,19 @@ if __name__ == "__main__":
 
             # Test de récupération
             print(f"Récupération de la donnée pour la clé {key} : {responsible_node.get_data(key)}")
+        
+        # Après la création des nœuds, établissez des liens longs
+        print("\n=== Routage l'étape 4 ===")
+        print("\n=== Établissement des liens longs entre les nœuds (en trichant) ===")
+        for node in network.nodes:
+            node.establish_long_links(network.nodes)
+
+        # Affichage des tables de routage uniquement si le routage avancé est activé
+        if use_advanced_routing:
+            print("\n=== Affichage des Tables de Routage ===")
+            for node in network.nodes:
+                node.display_routing_table()
+        
 
         print("\n=== Fin de la simulation DHT ===")
         print(f"Nombre total de nœuds restants dans le réseau DHT : {len(network.nodes)}")

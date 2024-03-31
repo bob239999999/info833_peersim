@@ -4,15 +4,20 @@ import random
 from Message import Message
 
 class Node:
-    def __init__(self, env, node_id):
+    def __init__(self, env, node_id, advanced_routing=False):
         self.env = env
         self.node_id = node_id
         self.left_neighbor = None
         self.right_neighbor = None
         self.inbox = []
         self.data_store = {}  # Dictionnaire pour stocker les données
+        self.long_links = []
         self.finished = env.event()  # Event to track message processing completion
         self.env.process(self.process_messages())  # Start processing messages
+        self.advanced_routing = advanced_routing
+
+        # Partie spécifique au routage avancé
+        self.routing_table = {} if advanced_routing else None
 
     def join_ring(self, network):
         print("\n=== Join Ring ===")
@@ -83,6 +88,8 @@ class Node:
         print(f"Ring: {ring}")
 
     def send(self, message):
+        if self.advanced_routing:
+            message.piggyback_info = self.gather_piggyback_info()
         message.recipient.inbox.append(message)
         print(f"Message sent: Node {self.node_id} sent a {message.type} message to Node {message.recipient.node_id}")
         print(f"SEND: Node {self.node_id} -> Node {message.recipient.node_id}, Type: {message.type}, Time: {self.env.now}")
@@ -120,6 +127,8 @@ class Node:
             return None
         else:
             message = self.inbox.pop(0)
+            if self.advanced_routing and hasattr(message, 'piggyback_info'):
+                self.update_routing_table(message.piggyback_info)
             print(f"Message received: Node {self.node_id} received a {message.type} message from Node {message.sender.node_id}")
             print(f"RECEIVE: Node {self.node_id} <- Node {message.sender.node_id}, Type: {message.type}, Time: {self.env.now}")
             return message
@@ -157,4 +166,41 @@ class Node:
         else:
             print(f"[Nœud {self.node_id}] La clé {key} n'est pas trouvée.")
             return None
+    
+    def establish_long_links(self, all_nodes, number_of_links=2):
+        potential_links = [node for node in all_nodes if node != self]
+        self.long_links = random.sample(potential_links, min(len(potential_links), number_of_links))
+        print(f"Node {self.node_id} established long links with {[node.node_id for node in self.long_links]}")
+    
+    def gather_piggyback_info(self):
+        if not self.advanced_routing:
+            return None
+        # Collecte et retourne les informations pour le piggybacking
+        piggyback_info = {
+            "node_id": self.node_id,
+            "data_keys": list(self.data_store.keys()),
+            "neighbors": {
+                "left_neighbor": self.left_neighbor.node_id if self.left_neighbor else None,
+                "right_neighbor": self.right_neighbor.node_id if self.right_neighbor else None,
+            }
+        }
+        print(f"Gathering piggyback info from Node {self.node_id}: {piggyback_info}")  # Log pour vérification
+        return piggyback_info
+
+
+    def update_routing_table(self, piggyback_info):
+        if not self.advanced_routing or self.routing_table is None:
+            return
+        # Met à jour la table de routage avec les nouvelles informations reçues
+        self.routing_table[piggyback_info['node_id']] = piggyback_info
+        print(f"Node {self.node_id} updated routing table with info from Node {piggyback_info['node_id']}: {piggyback_info}")
+
+
+    def display_routing_table(self):
+        if not self.advanced_routing:
+            print("Le routage avancé n'est pas activé pour ce nœud.")
+            return
+        print(f"Table de routage pour le nœud {self.node_id}: {self.routing_table}")
+
+    
 
