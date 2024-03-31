@@ -1,21 +1,21 @@
-from Message import Message
+# node.py
+import simpy
 import random
-from Fallible import Fallible
+from Message import Message
 
 class Node:
-
     def __init__(self, env, node_id):
         self.env = env
         self.node_id = node_id
         self.left_neighbor = None
         self.right_neighbor = None
         self.inbox = []
-        self.failstate = Fallible.ALIVE  # Corrected attribute name
+        self.data_store = {}  # Dictionnaire pour stocker les données
         self.finished = env.event()  # Event to track message processing completion
-        #self.env.process(self.process_messages())  # Start processing messages
+        self.env.process(self.process_messages())  # Start processing messages
 
     def join_ring(self, network):
-        print("---JOIN RING --------------------------------")
+        print("\n=== Join Ring ===")
         if not network.nodes:
             self.left_neighbor = self
             self.right_neighbor = self
@@ -44,7 +44,7 @@ class Node:
         self.print_ring(network)
 
     def leave_ring(self, network):
-        print("--- LEAVE RING --------------------------------")
+        print("\n=== Leave Ring ===")
         print(f"Node {self.node_id} leaving the ring at time {self.env.now}")
         self.print_neighbors()
         self.print_ring(network)
@@ -83,42 +83,33 @@ class Node:
         print(f"Ring: {ring}")
 
     def send(self, message):
-        print("----*----*----*----*----*----*----*----")
-        if self.failstate == Fallible.DEAD:
-            print(f"Node {self.node_id} has failed during send.")
-        else:
-            message.recipient.inbox.append(message)
-            print(f"Node {message.sender.node_id} send a JOIN message from {message.recipient.node_id}")
-            self.process_messages(message) 
+        message.recipient.inbox.append(message)
+        print(f"Message sent: Node {self.node_id} sent a {message.type} message to Node {message.recipient.node_id}")
+        print(f"SEND: Node {self.node_id} -> Node {message.recipient.node_id}, Type: {message.type}, Time: {self.env.now}")
 
-    def process_messages(self, message):
+    def process_messages(self):
+        while True:
+            # Check if there are messages in the inbox
+            if self.inbox:
+                # Process each message in the inbox
+                for _ in range(len(self.inbox)):
+                    message = self.receive()
+                    if message is not None:
+                        if message.type == 'JOIN':
+                            print(f"Node {self.node_id} received a JOIN message from {message.sender.node_id}")
+                        elif message.type == 'LEAVE':
+                            print(f"Node {self.node_id} received a LEAVE message from {message.sender.node_id}")
+                        elif message.type == 'FORWARD':
+                            print(f"Node {self.node_id} received FORWARD message from {message.sender.node_id}: {message.data}")
+                    yield self.env.timeout(20)  # Timeout after processing each message
+                if not self.finished.triggered:
+                    self.finished.succeed()
+  # Signal that all messages in the inbox have been processed
+            else:
+                # If there are no messages, wait for a timeout
+                yield self.env.timeout(1)
 
-        if message.message_type == 'JOIN':
-            print(f"Node {message.recipient.node_id} received a JOIN message from {message.sender.node_id}")
-        elif message.message_type == 'BROADCAST':
-            print(f"Node {message.recipient.node_id} received a BROADCAST message from {message.sender.node_id}")
-        elif message.message_type == 'LEAVE':
-            print(f"Node {message.recipient.node_id} received a LEAVE message from {message.sender.node_id}")
-        elif message.message_type == 'FORWARD':
-            print(f"Node {message.recipient.node_id} received FORWARD message from {message.sender.node_id}")
-        elif message.message_type == 'TEST':
-            print(f"Node {message.recipient.node_id} received a TEST message from {message.sender.node_id}")
-        elif message.message_type == 'ARRIVED':
-            print(f"Node {message.recipient.node_id} received a ARRIVED message from {message.sender.node_id}:{message.data}")
-        else:
-            print("Unknown message type")
-
-    def send_hello_message(self, network):
-        # Choose a random node in the network to send the hello message
-        recipient_node = random.choice(network.nodes)
-        hello_message = Message(sender=self, recipient=recipient_node, message_type='HELLO')
-        self.send(hello_message)
-
-    def receive(self, message):
-        # Simulate failure during receive
-        if self.failstate == Fallible.DEAD:
-            print(f"Node {self.node_id} is dead. Message cannot be received.")
-            return
+    def receive(self):
         if not self.inbox:
             return None
         else:
@@ -129,9 +120,41 @@ class Node:
             return None
         else:
             message = self.inbox.pop(0)
-            print(f"Message received: Node {self.node_id} received a {message.message_type} message from Node {message.sender.node_id}")
-            print(f"RECEIVE: Node {self.node_id} <- Node {message.sender.node_id}, Type: {message.message_type}")
+            print(f"Message received: Node {self.node_id} received a {message.type} message from Node {message.sender.node_id}")
+            print(f"RECEIVE: Node {self.node_id} <- Node {message.sender.node_id}, Type: {message.type}, Time: {self.env.now}")
             return message
 
-    def setfailstate(self, state):
-        self.failstate = state
+    def send_hello_message(self, network):
+        # Choose a random node in the network to send the hello message
+        print("\n=== Envoi d'un message HELLO d'un noeud à un autre noeud aléatoire de l'anneau ===")
+        recipient_node = random.choice(network.nodes)
+        hello_message = Message(sender=self, recipient=recipient_node, message_type='HELLO')
+        self.send(hello_message)
+
+    def put_data(self, key, value):
+        # Affichage avant le stockage des données
+        print(f"\n=== Stockage de Données ===")
+        print(f"[Nœud {self.node_id}] Tente de stocker la donnée : Clé={key}, Valeur='{value}'.")
+
+        # Stocker la donnée dans le nœud actuel
+        self.data_store[key] = value
+        print(f"[Nœud {self.node_id}] Stockage réussi.")
+
+        # Propager la donnée aux deux voisins immédiats pour réplication
+        self.left_neighbor.data_store[key] = value
+        print(f"[Nœud {self.left_neighbor.node_id}] Réplication de la donnée : Clé={key}.")
+        
+        self.right_neighbor.data_store[key] = value
+        print(f"[Nœud {self.right_neighbor.node_id}] Réplication de la donnée : Clé={key}.")
+
+        print("La donnée a été stockée et répliquée avec succès.")
+
+
+    def get_data(self, key):
+        # Vérifier si la clé existe dans le stockage actuel
+        if key in self.data_store:
+            return self.data_store[key]
+        else:
+            print(f"[Nœud {self.node_id}] La clé {key} n'est pas trouvée.")
+            return None
+

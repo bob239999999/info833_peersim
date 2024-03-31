@@ -18,6 +18,14 @@ class Network:
     def remove_node(self, node):
         self.nodes.remove(node)
 
+    def find_responsible_node(self, key):
+        if not self.nodes:  # Vérifier si la liste des nœuds est vide
+            print("Erreur : Il n'y a aucun nœud dans le réseau DHT.")
+            return None
+        # Trouver le nœud avec l'ID le plus proche de la clé
+        closest_node = min(self.nodes, key=lambda node: abs(node.node_id - key))
+        return closest_node
+
     def broadcast_recursive(self, sender_node, initial_sender):
         print(F"Broadcasting {sender_node.node_id}  {sender_node.failstate}")
         
@@ -54,14 +62,7 @@ class Network:
                 # Broadcasting has completed the cycle
                 return
 
-    def broadcast(self):
-        if not self.nodes:
-            raise ValueError("Cannot broadcast: No nodes in the network")
-        
-        # Choose a random node to start the broadcast
-        start_node = random.choice(self.nodes)
-        # Start the recursive broadcast from the chosen node
-        self.broadcast_recursive(start_node, None)
+    
 
         
 
@@ -81,19 +82,4 @@ class Network:
                             node.send(forward_message)
 
 
-    def print_inboxes(self):
-        print("================================")
-        for node in self.nodes:
-            for msg in node.inbox:
-                sender_id = msg.sender.node_id
-                recipient_id = msg.recipient.node_id
-                # Add sender_id and recipient_id to the routing table
-                if sender_id not in self.routing_table:
-                    self.routing_table[sender_id] = [recipient_id]
-                else:
-                    if recipient_id not in self.routing_table[sender_id]:
-                        self.routing_table[sender_id].append(recipient_id)
-            # Print routing table
-        for sender_id, recipients in self.routing_table.items():
-                print(f"From Node {sender_id} --> To Nodes: {', '.join(map(str, recipients))}")
-        print("================================")
+    
